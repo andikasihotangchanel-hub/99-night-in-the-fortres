@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Survival Forest Game vFinal</title>
 <style>
-body { margin:0; overflow:hidden; background:#2b5720; font-family:sans-serif; }
+body { margin:0; overflow:hidden; background:#87CEEB; font-family:sans-serif; }
 canvas { display:block; margin:0 auto; background:#87CEEB; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
 button { margin-top:5px; display:block; }
@@ -83,7 +83,7 @@ function moveStick(e){
   let dist=Math.sqrt(x*x+y*y);
   if(dist>30){x=x*30/dist;y=y*30/dist;}
   stick.style.left=(30+x)+'px'; stick.style.top=(30+y)+'px';
-  joy.x=x/30; joy.y=y/30;
+  joy.x=x/30; joy.y=-y/30; // perhatikan arah vertikal dibalik
   e.preventDefault();
 }
 function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
@@ -96,14 +96,14 @@ window.addEventListener('touchend',endDrag);
 
 // Draw Helpers
 function drawGround(camX, camY){
-  ctx.fillStyle = '#654321';
-  ctx.fillRect(-camX, 550-camY, canvas.width, 50);
+    ctx.fillStyle = '#654321';
+    ctx.fillRect(-camX, mapHeight - 50 - camY, canvas.width, 50);
 }
 function drawTree(x, y, camX, camY){
   ctx.fillStyle = '#8B4513';
-  ctx.fillRect(x-camX+15, y-camY+20, 10, 40); // batang
+  ctx.fillRect(x - camX +15, y - camY +20, 10, 40); // batang
   ctx.fillStyle = '#228B22';
-  ctx.fillRect(x-camX, y-camY, 40, 40); // daun
+  ctx.fillRect(x - camX, y - camY, 40, 40); // daun
 }
 function drawCoin(x, y, camX, camY, type){
   ctx.fillStyle = type=='giant'?'orange':'gold';
@@ -117,10 +117,10 @@ function update(){
   if(!player.alive) return;
   if(player.energy<=0) return;
   let speed=player.speed;
-  player.x+=((keys['d']||keys['ArrowRight']?1:0)-(keys['a']||keys['ArrowLeft']?1:0)+joy.x)*speed;
-  player.y+=((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0)+joy.y)*speed;
-  player.x=Math.max(0,Math.min(mapWidth,player.x));
-  player.y=Math.max(0,Math.min(mapHeight,player.y));
+  player.x += ((keys['d']||keys['ArrowRight']?1:0)-(keys['a']||keys['ArrowLeft']?1:0) + joy.x) * speed;
+  player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0) + joy.y) * speed;
+  player.x = Math.max(0, Math.min(mapWidth, player.x));
+  player.y = Math.max(0, Math.min(mapHeight, player.y));
 
   // Ambil koin
   coins.forEach((coin,index)=>{
@@ -128,7 +128,7 @@ function update(){
       if(coin.type=='normal' || (coin.type=='giant' && player.class=='Pemburu Koin Raksasa')){
         let gain=coin.type=='giant'?5:1;
         if(player.class=='Penjelajah' && coin.type=='normal') gain=2;
-        coinCount+=gain;
+        coinCount += gain;
         document.getElementById('coinCount').textContent=coinCount;
         coins.splice(index,1);
         if(coin.type=='normal') spawnCoin(); else spawnGiantCoin();
@@ -141,30 +141,31 @@ function update(){
     if(Math.abs(player.x-tree.x)<25 && Math.abs(player.y-tree.y)<25 && tree.wood>0){
       let gain=1;
       if(player.class=='Penjaga Hutan') gain=2;
-      woodCount+=gain;
-      tree.wood=Math.max(0,tree.wood-gain);
+      woodCount += gain;
+      tree.wood = Math.max(0, tree.wood - gain);
       document.getElementById('woodCount').textContent=woodCount;
     }
   });
 
   // Medis regenerasi energi
-  if(player.class=='Medis') player.energy=Math.min(100,player.energy+0.2);
-  else if(Math.abs(joy.x)+Math.abs(joy.y)>0 || keys['w']||keys['a']||keys['s']||keys['d']) player.energy=Math.max(0,player.energy-0.05);
-  document.getElementById('energy').textContent=Math.floor(player.energy);
+  if(player.class=='Medis') player.energy = Math.min(100, player.energy + 0.2);
+  else if(Math.abs(joy.x)+Math.abs(joy.y)>0 || keys['w']||keys['a']||keys['s']||keys['d']) player.energy = Math.max(0, player.energy - 0.05);
+  document.getElementById('energy').textContent = Math.floor(player.energy);
 }
 
 // Draw
 let ending=false;
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  const camX=player.x-canvas.width/2, camY=player.y-canvas.height/2;
+  const camX = player.x - canvas.width/2;
+  const camY = player.y - canvas.height/2;
 
   drawGround(camX, camY);
   trees.forEach(tree=>drawTree(tree.x, tree.y, camX, camY));
   coins.forEach(coin=>drawCoin(coin.x, coin.y, camX, camY, coin.type));
 
   if(ending){
-    drawEnding(camX,camY);
+    drawEnding(camX, camY);
   }
 }
 
