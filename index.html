@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Survival Forest Game v2</title>
+<title>Survival Forest Game v3</title>
 <style>
 body { margin:0; overflow:hidden; background:#2b5720; font-family:sans-serif; }
 canvas { display:block; margin:0 auto; background:#3a7a3a; }
-#ui { position:absolute; top:10px; left:10px; color:white; }
+#ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
 #buyButton, #buyHunter { margin-top:5px; display:block; }
-#joystick { position:absolute; bottom:20px; left:20px; width:120px; height:120px; background:rgba(255,255,255,0.2); border-radius:50%; touch-action:none; }
+#joystick { position:absolute; bottom:20px; left:20px; width:120px; height:120px; background:rgba(255,255,255,0.2); border-radius:50%; touch-action:none; z-index:10; }
 #stick { width:60px; height:60px; background:rgba(255,255,255,0.6); border-radius:50%; position:absolute; top:30px; left:30px; }
 </style>
 </head>
@@ -27,12 +27,10 @@ canvas { display:block; margin:0 auto; background:#3a7a3a; }
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let coinCount = 0;
+// Player (tidak terlihat)
+let player = { x: 400, y: 300, speed: 3, class: 'None' };
 
-// Player setup
-let player = { x: 400, y: 300, size: 0, color: 'blue', speed: 3, class: 'None' }; // size 0 karena player tidak terlihat
-
-// Map setup
+// Map
 const mapWidth = 2000;
 const mapHeight = 2000;
 
@@ -41,74 +39,69 @@ let coins = [];
 const coinSize = 10;
 const giantCoinSize = 25;
 
-// Pohon setup (rintangan)
+// Trees
 let trees = [];
-function spawnTrees(count){
-  for(let i=0;i<count;i++){
-    trees.push({
-      x: Math.random()*(mapWidth-40),
-      y: Math.random()*(mapHeight-40),
-      size: 40
-    });
-  }
-}
-spawnTrees(50);
-
-// Random koin biasa
-function spawnCoin() {
-  coins.push({ x: Math.random()*(mapWidth-coinSize), y: Math.random()*(mapHeight-coinSize), size: coinSize, type: 'normal' });
-}
-// Koin raksasa
-function spawnGiantCoin() {
-  coins.push({ x: Math.random()*(mapWidth-giantCoinSize), y: Math.random()*(mapHeight-giantCoinSize), size: giantCoinSize, type: 'giant' });
+for(let i=0;i<50;i++){
+  trees.push({ x: Math.random()*(mapWidth-40), y: Math.random()*(mapHeight-40), size:40 });
 }
 
-// Spawn awal
+// Spawn coins
+function spawnCoin(){ coins.push({ x: Math.random()*(mapWidth-coinSize), y: Math.random()*(mapHeight-coinSize), size: coinSize, type:'normal' }); }
+function spawnGiantCoin(){ coins.push({ x: Math.random()*(mapWidth-giantCoinSize), y: Math.random()*(mapHeight-giantCoinSize), size: giantCoinSize, type:'giant' }); }
 for(let i=0;i<20;i++) spawnCoin();
 for(let i=0;i<5;i++) spawnGiantCoin();
 
-// Input handling
+let coinCount = 0;
+document.getElementById('coinCount').textContent = coinCount;
+
+// Input keyboard
 let keys = {};
 window.addEventListener('keydown', e=> keys[e.key]=true);
 window.addEventListener('keyup', e=> keys[e.key]=false);
 
 // Joystick
-let stick = document.getElementById('stick');
 let joystick = document.getElementById('joystick');
+let stick = document.getElementById('stick');
 let joy = {x:0,y:0};
 let dragging=false;
 
-joystick.addEventListener('pointerdown', e=> { dragging=true; moveStick(e); });
-window.addEventListener('pointermove', e=> { if(dragging) moveStick(e); });
-window.addEventListener('pointerup', e=> { dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; });
-
-function moveStick(e){
+function startDrag(e){ dragging=true; moveStick(e); e.preventDefault(); }
+function moveDrag(e){
+  if(!dragging) return;
+  let touch = e.touches? e.touches[0]: e;
   const rect = joystick.getBoundingClientRect();
-  let x = e.clientX - rect.left - 60;
-  let y = e.clientY - rect.top - 60;
-  let dist = Math.sqrt(x*x+y*y);
+  let x = touch.clientX - rect.left - 60;
+  let y = touch.clientY - rect.top - 60;
+  let dist = Math.sqrt(x*x + y*y);
   if(dist>30){ x=x*30/dist; y=y*30/dist; }
-  stick.style.left=(30+x)+'px';
-  stick.style.top=(30+y)+'px';
+  stick.style.left = (30+x)+'px';
+  stick.style.top = (30+y)+'px';
   joy.x = x/30;
   joy.y = y/30;
+  e.preventDefault();
 }
+function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
+
+joystick.addEventListener('pointerdown', startDrag);
+window.addEventListener('pointermove', moveDrag);
+window.addEventListener('pointerup', endDrag);
+
+joystick.addEventListener('touchstart', startDrag);
+window.addEventListener('touchmove', moveDrag);
+window.addEventListener('touchend', endDrag);
 
 // Update
 function update(){
   let speed = player.speed;
+  player.x += ((keys['d']||keys['ArrowRight']?1:0) - (keys['a']||keys['ArrowLeft']?1:0) + joy.x)*speed;
+  player.y += ((keys['s']||keys['ArrowDown']?1:0) - (keys['w']||keys['ArrowUp']?1:0) + joy.y)*speed;
 
-  // Movement
-  player.x += ( (keys['d']||keys['ArrowRight']?1:0) - (keys['a']||keys['ArrowLeft']?1:0) + joy.x )*speed;
-  player.y += ( (keys['s']||keys['ArrowDown']?1:0) - (keys['w']||keys['ArrowUp']?1:0) + joy.y )*speed;
-
-  // Keep in map
   player.x = Math.max(0, Math.min(mapWidth, player.x));
   player.y = Math.max(0, Math.min(mapHeight, player.y));
 
   // Check coin pickup
-  coins.forEach((coin, index)=>{
-    if(Math.abs(player.x - coin.x) < 25 && Math.abs(player.y - coin.y) <25){
+  coins.forEach((coin,index)=>{
+    if(Math.abs(player.x - coin.x)<25 && Math.abs(player.y - coin.y)<25){
       if(coin.type=='normal' || (coin.type=='giant' && player.class=='Pemburu Koin Raksasa')){
         coinCount += coin.type=='giant'?5:1;
         document.getElementById('coinCount').textContent = coinCount;
@@ -123,8 +116,6 @@ function update(){
 // Draw
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // Kamera mengikuti player
   const camX = player.x - canvas.width/2;
   const camY = player.y - canvas.height/2;
 
@@ -150,22 +141,18 @@ gameLoop();
 // Class buttons
 document.getElementById('buyButton').addEventListener('click', ()=>{
   if(coinCount>=10){
-    coinCount -=10;
-    player.class = 'Penjelajah';
-    player.speed = 3;
-    document.getElementById('coinCount').textContent = coinCount;
-    document.getElementById('playerClass').textContent = 'Class: Penjelajah';
+    coinCount-=10; player.class='Penjelajah'; player.speed=3;
+    document.getElementById('coinCount').textContent=coinCount;
+    document.getElementById('playerClass').textContent='Class: Penjelajah';
     alert('Kamu sekarang Penjelajah!');
   }else alert('Koin tidak cukup!');
 });
 
 document.getElementById('buyHunter').addEventListener('click', ()=>{
   if(coinCount>=20){
-    coinCount -=20;
-    player.class = 'Pemburu Koin Raksasa';
-    player.speed = 4;
-    document.getElementById('coinCount').textContent = coinCount;
-    document.getElementById('playerClass').textContent = 'Class: Pemburu Koin Raksasa';
+    coinCount-=20; player.class='Pemburu Koin Raksasa'; player.speed=4;
+    document.getElementById('coinCount').textContent=coinCount;
+    document.getElementById('playerClass').textContent='Class: Pemburu Koin Raksasa';
     alert('Kamu sekarang Pemburu Koin Raksasa!');
   }else alert('Koin tidak cukup!');
 });
