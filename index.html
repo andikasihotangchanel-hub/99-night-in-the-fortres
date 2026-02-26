@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survival Forest Game</title>
+<style>
+  body { margin:0; overflow:hidden; background:#2b5720; font-family:sans-serif; }
+  canvas { background:#3a7a3a; display:block; margin:0 auto; }
+  #ui { position:absolute; top:10px; left:10px; color:white; }
+  #buyButton { margin-top:5px; }
+</style>
+</head>
+<body>
+<div id="ui">
+  Koin: <span id="coinCount">0</span><br>
+  <button id="buyButton">Beli Class Penjelajah (10 Koin)</button>
+  <div id="playerClass">Class: None</div>
+</div>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Player setup
+let player = { x: 400, y: 300, size: 20, color: 'blue', speed: 3, class: 'None' };
+
+// Koin setup
+let coins = [];
+const coinSize = 10;
+let coinCount = 0;
+
+// Map setup
+const mapWidth = canvas.width;
+const mapHeight = canvas.height;
+
+// Random koin generator
+function spawnCoin() {
+  let coin = {
+    x: Math.random() * (mapWidth - coinSize),
+    y: Math.random() * (mapHeight - coinSize)
+  };
+  coins.push(coin);
+}
+
+// Spawn 20 koin awal
+for(let i=0;i<20;i++) spawnCoin();
+
+// Input handling
+let keys = {};
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+// Update loop
+function update() {
+  // Gerakan player
+  if(keys['w'] || keys['ArrowUp']) player.y -= player.speed;
+  if(keys['s'] || keys['ArrowDown']) player.y += player.speed;
+  if(keys['a'] || keys['ArrowLeft']) player.x -= player.speed;
+  if(keys['d'] || keys['ArrowRight']) player.x += player.speed;
+
+  // Batasi player di map
+  player.x = Math.max(0, Math.min(mapWidth - player.size, player.x));
+  player.y = Math.max(0, Math.min(mapHeight - player.size, player.y));
+
+  // Cek koin dikumpulkan
+  coins.forEach((coin, index) => {
+    if(Math.abs(player.x - coin.x) < (player.size + coinSize)/2 &&
+       Math.abs(player.y - coin.y) < (player.size + coinSize)/2){
+        coins.splice(index,1);
+        coinCount++;
+        document.getElementById('coinCount').textContent = coinCount;
+        spawnCoin(); // spawn koin baru
+    }
+  });
+}
+
+// Draw loop
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw coins
+  coins.forEach(coin => {
+    ctx.fillStyle = 'gold';
+    ctx.beginPath();
+    ctx.arc(coin.x + coinSize/2, coin.y + coinSize/2, coinSize/2, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Draw player
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+}
+
+// Game loop
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+
+// Beli class penjelajah
+document.getElementById('buyButton').addEventListener('click', ()=>{
+  if(coinCount >= 10){
+    coinCount -=10;
+    player.class = 'Penjelajah';
+    document.getElementById('coinCount').textContent = coinCount;
+    document.getElementById('playerClass').textContent = 'Class: Penjelajah';
+    player.color = 'green';
+    alert('Kamu sekarang Penjelajah!');
+  } else {
+    alert('Koin tidak cukup!');
+  }
+});
+</script>
+</body>
+</html>
