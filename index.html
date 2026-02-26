@@ -84,7 +84,7 @@ function moveStick(e){
   if(dist>30){x=x*30/dist;y=y*30/dist;}
   stick.style.left=(30+x)+'px'; stick.style.top=(30+y)+'px';
   joy.x = x/30;
-  joy.y = -y/30; // y negatif = maju
+  joy.y = y/30; // y negatif = maju
   e.preventDefault();
 }
 function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
@@ -122,7 +122,7 @@ function update(){
   player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0) + joy.y) * speed;
 
   player.x = Math.max(0, Math.min(mapWidth, player.x));
-  player.y = Math.max(0, Math.min(mapHeight-20, player.y));
+  player.y = Math.max(0, Math.min(groundY-20, player.y));
 
   // Ambil koin
   coins.forEach((coin,index)=>{
@@ -160,7 +160,7 @@ let ending=false;
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   let camX = player.x - canvas.width/2;
-  let camY = player.y - canvas.height/2;
+  let camY = player.y - canvas.height/1.5;
 
   camX = Math.max(0, Math.min(camX, mapWidth - canvas.width));
   camY = Math.max(0, Math.min(camY, mapHeight - canvas.height));
