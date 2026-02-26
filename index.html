@@ -37,8 +37,8 @@ const ctx=canvas.getContext('2d');
 let player={x:400,y:450,speed:3,class:'None',energy:100,wood:0,alive:true};
 
 // Map
-const mapWidth=2000,mapHeight=600; 
-const groundY = 500; // tanah
+const mapWidth=3000,mapHeight=2000;
+const groundY = 1200; // tanah
 
 // Trees
 let trees=[];
@@ -122,7 +122,7 @@ function update(){
   player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0) + joy.y) * speed;
 
   player.x = Math.max(0, Math.min(mapWidth, player.x));
-  player.y = Math.max(0, Math.min(groundY-20, player.y));
+  player.y = Math.max(0, Math.min(mapHeight-20, player.y));
 
   // Ambil koin
   coins.forEach((coin,index)=>{
