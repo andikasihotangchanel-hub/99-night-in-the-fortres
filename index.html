@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Survival Forest Game v4</title>
+<title>Survival Forest Game vFinal</title>
 <style>
 body { margin:0; overflow:hidden; background:#2b5720; font-family:sans-serif; }
-canvas { display:block; margin:0 auto; background:#3a7a3a; }
+canvas { display:block; margin:0 auto; background:#87CEEB; }
 #ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
-#buyButton, #buyHunter, #craftWood { margin-top:5px; display:block; }
+button { margin-top:5px; display:block; }
 #joystick { position:absolute; bottom:20px; left:20px; width:120px; height:120px; background:rgba(255,255,255,0.2); border-radius:50%; touch-action:none; z-index:10; }
 #stick { width:60px; height:60px; background:rgba(255,255,255,0.6); border-radius:50%; position:absolute; top:30px; left:30px; }
 </style>
@@ -17,151 +17,204 @@ canvas { display:block; margin:0 auto; background:#3a7a3a; }
 <div id="ui">
   Koin: <span id="coinCount">0</span><br>
   Kayu: <span id="woodCount">0</span><br>
-  <button id="buyButton">Beli Class Penjelajah (10 Koin)</button>
+  Energi: <span id="energy">100</span><br>
+  <div id="dayCounter">Hari: 1</div>
+  <button id="buyExplorer">Beli Class Penjelajah (10 Koin)</button>
   <button id="buyHunter">Beli Class Pemburu Koin Raksasa (20 Koin)</button>
+  <button id="buyGuard">Beli Class Penjaga Hutan (15 Koin)</button>
+  <button id="buyMedic">Beli Class Medis (15 Koin)</button>
   <button id="craftWood">Craft Papan Kayu (5 Kayu)</button>
   <div id="playerClass">Class: None</div>
-  <div>Energi: <span id="energy">100</span></div>
 </div>
 <canvas id="gameCanvas" width="800" height="600"></canvas>
 <div id="joystick"><div id="stick"></div></div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
 
 // Player
-let player = { x: 400, y: 300, speed: 3, class: 'None', energy:100, wood:0 };
+let player={x:400,y:300,speed:3,class:'None',energy:100,wood:0,alive:true};
 
 // Map
-const mapWidth = 2000;
-const mapHeight = 2000;
+const mapWidth=2000,mapHeight=2000;
 
 // Trees
-let trees = [];
-for(let i=0;i<50;i++){ trees.push({ x: Math.random()*(mapWidth-40), y: Math.random()*(mapHeight-40), size:40, wood:3 }); }
+let trees=[];
+for(let i=0;i<50;i++){ trees.push({x:Math.random()*(mapWidth-40),y:Math.random()*(mapHeight-40),size:40,wood:3}); }
 
 // Coins
-let coins = [];
-const coinSize = 10;
-const giantCoinSize = 25;
-function spawnCoin(){ coins.push({ x: Math.random()*(mapWidth-coinSize), y: Math.random()*(mapHeight-coinSize), size: coinSize, type:'normal' }); }
-function spawnGiantCoin(){ coins.push({ x: Math.random()*(mapWidth-giantCoinSize), y: Math.random()*(mapHeight-giantCoinSize), size: giantCoinSize, type:'giant' }); }
+let coins=[];
+const coinSize=10,giantCoinSize=25;
+function spawnCoin(){ coins.push({x:Math.random()*(mapWidth-coinSize),y:Math.random()*(mapHeight-coinSize),size:coinSize,type:'normal'}); }
+function spawnGiantCoin(){ coins.push({x:Math.random()*(mapWidth-giantCoinSize),y:Math.random()*(mapHeight-giantCoinSize),size:giantCoinSize,type:'giant'}); }
 for(let i=0;i<20;i++) spawnCoin();
 for(let i=0;i<5;i++) spawnGiantCoin();
 
 // Counters
-let coinCount = 0;
-let woodCount = 0;
+let coinCount=0,woodCount=0;
 document.getElementById('coinCount').textContent=coinCount;
 document.getElementById('woodCount').textContent=woodCount;
 
+// Hari
+let day=1;
+document.getElementById('dayCounter').textContent='Hari: '+day;
+const maxDays=99;
+let dayInterval = setInterval(()=>{
+  if(day<maxDays && player.alive){ day++; document.getElementById('dayCounter').textContent='Hari: '+day; }
+  if(day>=maxDays && player.alive){ triggerEnding(); clearInterval(dayInterval); }
+},10000); // 1 hari = 10 detik
+
 // Input
-let keys = {};
-window.addEventListener('keydown', e=> keys[e.key]=true);
-window.addEventListener('keyup', e=> keys[e.key]=false);
+let keys={};
+window.addEventListener('keydown',e=>keys[e.key]=true);
+window.addEventListener('keyup',e=>keys[e.key]=false);
 
 // Joystick
-let joystick = document.getElementById('joystick');
-let stick = document.getElementById('stick');
-let joy={x:0,y:0};
-let dragging=false;
+let joystick=document.getElementById('joystick');
+let stick=document.getElementById('stick');
+let joy={x:0,y:0},dragging=false;
 function startDrag(e){ dragging=true; moveStick(e); e.preventDefault(); }
-function moveDrag(e){
+function moveStick(e){
   if(!dragging) return;
-  let touch = e.touches? e.touches[0]: e;
-  const rect = joystick.getBoundingClientRect();
-  let x = touch.clientX - rect.left - 60;
-  let y = touch.clientY - rect.top - 60;
-  let dist = Math.sqrt(x*x + y*y);
-  if(dist>30){ x=x*30/dist; y=y*30/dist; }
-  stick.style.left=(30+x)+'px';
-  stick.style.top=(30+y)+'px';
-  joy.x = x/30; joy.y=y/30;
+  let touch=e.touches?e.touches[0]:e;
+  const rect=joystick.getBoundingClientRect();
+  let x=touch.clientX-rect.left-60,y=touch.clientY-rect.top-60;
+  let dist=Math.sqrt(x*x+y*y);
+  if(dist>30){x=x*30/dist;y=y*30/dist;}
+  stick.style.left=(30+x)+'px'; stick.style.top=(30+y)+'px';
+  joy.x=x/30; joy.y=y/30;
   e.preventDefault();
 }
 function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
 joystick.addEventListener('pointerdown',startDrag);
-window.addEventListener('pointermove',moveDrag);
+window.addEventListener('pointermove',moveStick);
 window.addEventListener('pointerup',endDrag);
 joystick.addEventListener('touchstart',startDrag);
-window.addEventListener('touchmove',moveDrag);
+window.addEventListener('touchmove',moveStick);
 window.addEventListener('touchend',endDrag);
+
+// Draw Helpers
+function drawGround(camX, camY){
+  ctx.fillStyle = '#654321';
+  ctx.fillRect(-camX, 550-camY, canvas.width, 50);
+}
+function drawTree(x, y, camX, camY){
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(x-camX+15, y-camY+20, 10, 40); // batang
+  ctx.fillStyle = '#228B22';
+  ctx.fillRect(x-camX, y-camY, 40, 40); // daun
+}
+function drawCoin(x, y, camX, camY, type){
+  ctx.fillStyle = type=='giant'?'orange':'gold';
+  ctx.beginPath();
+  ctx.arc(x-camX+10, y-camY+10, type=='giant'?12:10, 0, Math.PI*2);
+  ctx.fill();
+}
 
 // Update
 function update(){
-  if(player.energy<=0) return; // tidak bisa bergerak jika energi habis
-  let speed = player.speed;
-  player.x += ((keys['d']||keys['ArrowRight']?1:0)-(keys['a']||keys['ArrowLeft']?1:0)+joy.x)*speed;
-  player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0)+joy.y)*speed;
-
-  player.x = Math.max(0, Math.min(mapWidth, player.x));
-  player.y = Math.max(0, Math.min(mapHeight, player.y));
+  if(!player.alive) return;
+  if(player.energy<=0) return;
+  let speed=player.speed;
+  player.x+=((keys['d']||keys['ArrowRight']?1:0)-(keys['a']||keys['ArrowLeft']?1:0)+joy.x)*speed;
+  player.y+=((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0)+joy.y)*speed;
+  player.x=Math.max(0,Math.min(mapWidth,player.x));
+  player.y=Math.max(0,Math.min(mapHeight,player.y));
 
   // Ambil koin
   coins.forEach((coin,index)=>{
     if(Math.abs(player.x-coin.x)<25 && Math.abs(player.y-coin.y)<25){
       if(coin.type=='normal' || (coin.type=='giant' && player.class=='Pemburu Koin Raksasa')){
-        coinCount += coin.type=='giant'?5:1;
+        let gain=coin.type=='giant'?5:1;
+        if(player.class=='Penjelajah' && coin.type=='normal') gain=2;
+        coinCount+=gain;
         document.getElementById('coinCount').textContent=coinCount;
         coins.splice(index,1);
-        if(coin.type=='normal') spawnCoin();
-        else spawnGiantCoin();
+        if(coin.type=='normal') spawnCoin(); else spawnGiantCoin();
       }
     }
   });
 
-  // Ambil kayu dari pohon
+  // Ambil kayu
   trees.forEach(tree=>{
     if(Math.abs(player.x-tree.x)<25 && Math.abs(player.y-tree.y)<25 && tree.wood>0){
-      woodCount+=1;
-      tree.wood-=1;
+      let gain=1;
+      if(player.class=='Penjaga Hutan') gain=2;
+      woodCount+=gain;
+      tree.wood=Math.max(0,tree.wood-gain);
       document.getElementById('woodCount').textContent=woodCount;
     }
   });
 
-  // Energi berkurang saat bergerak
-  if(Math.abs(joy.x)+Math.abs(joy.y)>0 || keys['w']||keys['a']||keys['s']||keys['d']) player.energy=Math.max(0,player.energy-0.05);
+  // Medis regenerasi energi
+  if(player.class=='Medis') player.energy=Math.min(100,player.energy+0.2);
+  else if(Math.abs(joy.x)+Math.abs(joy.y)>0 || keys['w']||keys['a']||keys['s']||keys['d']) player.energy=Math.max(0,player.energy-0.05);
   document.getElementById('energy').textContent=Math.floor(player.energy);
 }
 
 // Draw
+let ending=false;
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  const camX = player.x - canvas.width/2;
-  const camY = player.y - canvas.height/2;
+  const camX=player.x-canvas.width/2, camY=player.y-canvas.height/2;
 
-  // Pohon
-  trees.forEach(tree=>{
-    ctx.fillStyle='#145214';
-    ctx.fillRect(tree.x-camX,tree.y-camY,tree.size,tree.size);
-  });
+  drawGround(camX, camY);
+  trees.forEach(tree=>drawTree(tree.x, tree.y, camX, camY));
+  coins.forEach(coin=>drawCoin(coin.x, coin.y, camX, camY, coin.type));
 
-  // Coins
-  coins.forEach(coin=>{
-    ctx.fillStyle=coin.type=='giant'?'orange':'gold';
-    ctx.beginPath();
-    ctx.arc(coin.x-camX+coin.size/2,coin.y-camY+coin.size/2,coin.size/2,0,Math.PI*2);
-    ctx.fill();
-  });
+  if(ending){
+    drawEnding(camX,camY);
+  }
 }
 
-// Loop
+// Game loop
 function gameLoop(){ update(); draw(); requestAnimationFrame(gameLoop); }
 gameLoop();
 
 // Class buttons
-document.getElementById('buyButton').addEventListener('click',()=>{
-  if(coinCount>=10){ coinCount-=10; player.class='Penjelajah'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Penjelajah'; alert('Kamu sekarang Penjelajah!'); }else alert('Koin tidak cukup!');
-});
-document.getElementById('buyHunter').addEventListener('click',()=>{
-  if(coinCount>=20){ coinCount-=20; player.class='Pemburu Koin Raksasa'; player.speed=4; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Pemburu Koin Raksasa'; alert('Kamu sekarang Pemburu Koin Raksasa!'); }else alert('Koin tidak cukup!');
-});
+document.getElementById('buyExplorer').addEventListener('click',()=>{ if(coinCount>=10){ coinCount-=10; player.class='Penjelajah'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Penjelajah'; alert('Kamu sekarang Penjelajah!'); }else alert('Koin tidak cukup!'); });
+document.getElementById('buyHunter').addEventListener('click',()=>{ if(coinCount>=20){ coinCount-=20; player.class='Pemburu Koin Raksasa'; player.speed=4; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Pemburu Koin Raksasa'; alert('Kamu sekarang Pemburu Koin Raksasa!'); }else alert('Koin tidak cukup!'); });
+document.getElementById('buyGuard').addEventListener('click',()=>{ if(coinCount>=15){ coinCount-=15; player.class='Penjaga Hutan'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Penjaga Hutan'; alert('Kamu sekarang Penjaga Hutan!'); }else alert('Koin tidak cukup!'); });
+document.getElementById('buyMedic').addEventListener('click',()=>{ if(coinCount>=15){ coinCount-=15; player.class='Medis'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Medis'; alert('Kamu sekarang Medis!'); }else alert('Koin tidak cukup!'); });
 
-// Crafting example
-document.getElementById('craftWood').addEventListener('click',()=>{
-  if(woodCount>=5){ woodCount-=5; alert('Kamu berhasil membuat papan kayu!'); document.getElementById('woodCount').textContent=woodCount; }else alert('Kayu tidak cukup!');
-});
+// Crafting
+document.getElementById('craftWood').addEventListener('click',()=>{ if(woodCount>=5){ woodCount-=5; alert('Kamu berhasil membuat papan kayu!'); woodCount-=5; document.getElementById('woodCount').textContent=woodCount; }else alert('Kayu tidak cukup!'); });
+
+// Ending cinematic
+function triggerEnding(){
+  ending=true;
+  player.alive=false;
+  alert('Selamat! Kamu berhasil bertahan hingga Hari 99!\nEnding cinematic dimulai...');
+  let owlY=-50, bombY=-50, helipadX=player.x-50;
+  let frame=0;
+  function endingAnim(){
+    frame++;
+    draw();
+    const camX=player.x-canvas.width/2, camY=player.y-canvas.height/2;
+    ctx.fillStyle='gray';
+    ctx.fillRect(helipadX-camX,player.y-100-camY,100,40);
+    owlY+=2;
+    ctx.fillStyle='white';
+    ctx.beginPath();
+    ctx.arc(player.x-camX,owlY-camY,20,0,Math.PI*2);
+    ctx.fill();
+    bombY+=3;
+    ctx.fillStyle='red';
+    ctx.beginPath();
+    ctx.arc(player.x-camX,bombY-camY,10,0,Math.PI*2);
+    ctx.fill();
+    if(Math.abs(bombY-owlY)<5){
+      ctx.fillStyle='orange';
+      ctx.beginPath();
+      ctx.arc(player.x-camX,owlY-camY,30,0,Math.PI*2);
+      ctx.fill();
+      return;
+    }
+    if(frame<300) requestAnimationFrame(endingAnim);
+  }
+  endingAnim();
+}
 </script>
 </body>
 </html>
