@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Survival Forest Game Fixed Final</title>
+<title>Survival Forest Game - Final Fix</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:sans-serif; }
 canvas { display:block; margin:0 auto; background:#87CEEB; }
@@ -34,15 +34,15 @@ const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 
 // Player
-let player={x:400,y:0,speed:3,class:'None',energy:100,wood:0,alive:true};
+let player={x:400,y:450,speed:3,class:'None',energy:100,wood:0,alive:true};
 
 // Map
-const mapWidth=2000,mapHeight=600; // tinggi map tetap
-const groundY = 500; // posisi tanah
+const mapWidth=2000,mapHeight=600; 
+const groundY = 500; // tanah
 
 // Trees
 let trees=[];
-for(let i=0;i<50;i++){ trees.push({x:Math.random()*(mapWidth-40),y:groundY-40, size:40,wood:3}); }
+for(let i=0;i<50;i++){ trees.push({x:Math.random()*(mapWidth-40),y:groundY-40,size:40,wood:3}); }
 
 // Coins
 let coins=[];
@@ -83,7 +83,8 @@ function moveStick(e){
   let dist=Math.sqrt(x*x+y*y);
   if(dist>30){x=x*30/dist;y=y*30/dist;}
   stick.style.left=(30+x)+'px'; stick.style.top=(30+y)+'px';
-  joy.x=x/30; joy.y=-y/30; // maju = y negatif (lawan arah canvas)
+  joy.x = x/30;
+  joy.y = -y/30; // y negatif = maju
   e.preventDefault();
 }
 function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
@@ -94,16 +95,16 @@ joystick.addEventListener('touchstart',startDrag);
 window.addEventListener('touchmove',moveStick);
 window.addEventListener('touchend',endDrag);
 
-// Draw Helpers
+// Draw
 function drawGround(camX, camY){
     ctx.fillStyle = '#654321';
-    ctx.fillRect(-camX, groundY-camY, canvas.width, mapHeight-groundY);
+    ctx.fillRect(0-camX, groundY-camY, mapWidth, mapHeight-groundY);
 }
 function drawTree(x, y, camX, camY){
   ctx.fillStyle = '#8B4513';
-  ctx.fillRect(x - camX +15, y - camY +20, 10, 40); // batang
+  ctx.fillRect(x - camX +15, y - camY +20, 10, 40);
   ctx.fillStyle = '#228B22';
-  ctx.fillRect(x - camX, y - camY, 40, 40); // daun
+  ctx.fillRect(x - camX, y - camY, 40, 40);
 }
 function drawCoin(x, y, camX, camY, type){
   ctx.fillStyle = type=='giant'?'orange':'gold';
@@ -121,7 +122,7 @@ function update(){
   player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0) + joy.y) * speed;
 
   player.x = Math.max(0, Math.min(mapWidth, player.x));
-  player.y = Math.min(player.y, groundY - 20); // batasi player di atas tanah
+  player.y = Math.max(0, Math.min(groundY-20, player.y));
 
   // Ambil koin
   coins.forEach((coin,index)=>{
@@ -161,7 +162,6 @@ function draw(){
   let camX = player.x - canvas.width/2;
   let camY = player.y - canvas.height/2;
 
-  // batasi kamera agar tidak keluar map
   camX = Math.max(0, Math.min(camX, mapWidth - canvas.width));
   camY = Math.max(0, Math.min(camY, mapHeight - canvas.height));
 
