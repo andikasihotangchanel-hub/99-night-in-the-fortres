@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Survival Forest Game vFinal</title>
+<title>Survival Forest Game Fixed</title>
 <style>
 body { margin:0; overflow:hidden; background:#87CEEB; font-family:sans-serif; }
 canvas { display:block; margin:0 auto; background:#87CEEB; }
@@ -37,17 +37,16 @@ const ctx=canvas.getContext('2d');
 let player={x:400,y:300,speed:3,class:'None',energy:100,wood:0,alive:true};
 
 // Map
-const mapWidth=2000,mapHeight=2000;
+const mapWidth=2000,mapHeight=600; // mapHeight disesuaikan supaya tanah terlihat
 
 // Trees
 let trees=[];
-for(let i=0;i<50;i++){ trees.push({x:Math.random()*(mapWidth-40),y:Math.random()*(mapHeight-40),size:40,wood:3}); }
+for(let i=0;i<50;i++){ trees.push({x:Math.random()*(mapWidth-40),y:Math.random()*(mapHeight-120),size:40,wood:3}); }
 
 // Coins
 let coins=[];
-const coinSize=10,giantCoinSize=25;
-function spawnCoin(){ coins.push({x:Math.random()*(mapWidth-coinSize),y:Math.random()*(mapHeight-coinSize),size:coinSize,type:'normal'}); }
-function spawnGiantCoin(){ coins.push({x:Math.random()*(mapWidth-giantCoinSize),y:Math.random()*(mapHeight-giantCoinSize),size:giantCoinSize,type:'giant'}); }
+function spawnCoin(){ coins.push({x:Math.random()*(mapWidth-20),y:Math.random()*(mapHeight-120),size:10,type:'normal'}); }
+function spawnGiantCoin(){ coins.push({x:Math.random()*(mapWidth-30),y:Math.random()*(mapHeight-120),size:25,type:'giant'}); }
 for(let i=0;i<20;i++) spawnCoin();
 for(let i=0;i<5;i++) spawnGiantCoin();
 
@@ -83,7 +82,7 @@ function moveStick(e){
   let dist=Math.sqrt(x*x+y*y);
   if(dist>30){x=x*30/dist;y=y*30/dist;}
   stick.style.left=(30+x)+'px'; stick.style.top=(30+y)+'px';
-  joy.x=x/30; joy.y=-y/30; // perhatikan arah vertikal dibalik
+  joy.x=x/30; joy.y=-y/30; // y dibalik agar maju = ke bawah layar
   e.preventDefault();
 }
 function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
@@ -97,7 +96,7 @@ window.addEventListener('touchend',endDrag);
 // Draw Helpers
 function drawGround(camX, camY){
     ctx.fillStyle = '#654321';
-    ctx.fillRect(-camX, mapHeight - 50 - camY, canvas.width, 50);
+    ctx.fillRect(-camX, mapHeight-50-camY, canvas.width, 50);
 }
 function drawTree(x, y, camX, camY){
   ctx.fillStyle = '#8B4513';
@@ -120,7 +119,7 @@ function update(){
   player.x += ((keys['d']||keys['ArrowRight']?1:0)-(keys['a']||keys['ArrowLeft']?1:0) + joy.x) * speed;
   player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0) + joy.y) * speed;
   player.x = Math.max(0, Math.min(mapWidth, player.x));
-  player.y = Math.max(0, Math.min(mapHeight, player.y));
+  player.y = Math.max(0, Math.min(mapHeight-50, player.y)); // jangan lewat tanah
 
   // Ambil koin
   coins.forEach((coin,index)=>{
