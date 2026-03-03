@@ -1,229 +1,390 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Survival Forest Game - Final Fix</title>
+<title>Forest Survival 3D</title>
+
 <style>
-body { margin:0; overflow:hidden; background:#87CEEB; font-family:sans-serif; }
-canvas { display:block; margin:0 auto; background:#87CEEB; }
-#ui { position:absolute; top:10px; left:10px; color:white; z-index:10; }
-button { margin-top:5px; display:block; }
-#joystick { position:absolute; bottom:20px; left:20px; width:120px; height:120px; background:rgba(255,255,255,0.2); border-radius:50%; touch-action:none; z-index:10; }
-#stick { width:60px; height:60px; background:rgba(255,255,255,0.6); border-radius:50%; position:absolute; top:30px; left:30px; }
+
+body{
+margin:0;
+overflow:hidden;
+font-family:sans-serif;
+}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+color:white;
+background:rgba(0,0,0,0.5);
+padding:10px;
+border-radius:10px;
+}
+
+button{
+display:block;
+margin-top:5px;
+}
+
+#joystick{
+position:absolute;
+bottom:30px;
+left:30px;
+width:120px;
+height:120px;
+background:rgba(255,255,255,0.2);
+border-radius:50%;
+}
+
+#stick{
+width:60px;
+height:60px;
+background:rgba(255,255,255,0.6);
+border-radius:50%;
+position:absolute;
+left:30px;
+top:30px;
+}
+
 </style>
+
 </head>
+
 <body>
+
 <div id="ui">
-  Koin: <span id="coinCount">0</span><br>
-  Kayu: <span id="woodCount">0</span><br>
-  Energi: <span id="energy">100</span><br>
-  <div id="dayCounter">Hari: 1</div>
-  <button id="buyExplorer">Beli Class Penjelajah (10 Koin)</button>
-  <button id="buyHunter">Beli Class Pemburu Koin Raksasa (20 Koin)</button>
-  <button id="buyGuard">Beli Class Penjaga Hutan (15 Koin)</button>
-  <button id="buyMedic">Beli Class Medis (15 Koin)</button>
-  <button id="craftWood">Craft Papan Kayu (5 Kayu)</button>
-  <div id="playerClass">Class: None</div>
+
+Koin: <span id="coin">0</span><br>
+Hari: <span id="day">1</span><br>
+Class: <span id="class">None</span>
+
+<button onclick="buyExplorer()">Penjelajah (10)</button>
+<button onclick="buyHunter()">Pemburu Koin Raksasa (20)</button>
+<button onclick="buyGuard()">Penjaga Hutan (15)</button>
+<button onclick="buyMedic()">Medis (15)</button>
+
 </div>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
+
 <div id="joystick"><div id="stick"></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
 <script>
-const canvas=document.getElementById('gameCanvas');
-const ctx=canvas.getContext('2d');
 
-// Player
-let player={x:400,y:450,speed:3,class:'None',energy:100,wood:0,alive:true};
+// SCENE
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
 
-// Map
-const mapWidth=3000,mapHeight=2000;
-const groundY = 1200; // tanah
+// CAMERA
+const camera = new THREE.PerspectiveCamera(
+75,
+window.innerWidth/window.innerHeight,
+0.1,
+1000
+);
 
-// Trees
-let trees=[];
-for(let i=0;i<50;i++){ trees.push({x:Math.random()*(mapWidth-40),y:groundY-40,size:40,wood:3}); }
+camera.position.set(0,2,5);
 
-// Coins
+// RENDER
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth,window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// LIGHT
+const sun = new THREE.DirectionalLight(0xffffff,1);
+sun.position.set(50,100,50);
+scene.add(sun);
+
+// TANAH
+const ground = new THREE.Mesh(
+
+new THREE.PlaneGeometry(600,600),
+
+new THREE.MeshLambertMaterial({color:0x3b7d2b})
+
+);
+
+ground.rotation.x=-Math.PI/2;
+scene.add(ground);
+
+// PLAYER
+let player={
+x:0,
+z:0,
+speed:0.15,
+class:"None"
+};
+
+// COIN
+let coinCount=0;
+
+// POHON
+function createTree(x,z){
+
+const trunk=new THREE.Mesh(
+
+new THREE.CylinderGeometry(0.3,0.3,2),
+
+new THREE.MeshLambertMaterial({color:0x8b4513})
+
+);
+
+trunk.position.set(x,1,z);
+
+const leaves=new THREE.Mesh(
+
+new THREE.BoxGeometry(2,2,2),
+
+new THREE.MeshLambertMaterial({color:0x228b22})
+
+);
+
+leaves.position.set(x,3,z);
+
+scene.add(trunk);
+scene.add(leaves);
+
+}
+
+// buat hutan
+for(let i=0;i<150;i++){
+
+createTree(
+(Math.random()-0.5)*400,
+(Math.random()-0.5)*400
+);
+
+}
+
+// KOIN
 let coins=[];
-function spawnCoin(){ coins.push({x:Math.random()*(mapWidth-20),y:groundY-30,size:10,type:'normal'}); }
-function spawnGiantCoin(){ coins.push({x:Math.random()*(mapWidth-30),y:groundY-30,size:25,type:'giant'}); }
-for(let i=0;i<20;i++) spawnCoin();
-for(let i=0;i<5;i++) spawnGiantCoin();
 
-// Counters
-let coinCount=0,woodCount=0;
-document.getElementById('coinCount').textContent=coinCount;
-document.getElementById('woodCount').textContent=woodCount;
+function spawnCoin(){
 
-// Hari
-let day=1;
-document.getElementById('dayCounter').textContent='Hari: '+day;
-const maxDays=99;
-let dayInterval = setInterval(()=>{
-  if(day<maxDays && player.alive){ day++; document.getElementById('dayCounter').textContent='Hari: '+day; }
-  if(day>=maxDays && player.alive){ triggerEnding(); clearInterval(dayInterval); }
-},10000); // 1 hari = 10 detik
+const coin=new THREE.Mesh(
 
-// Input
-let keys={};
-window.addEventListener('keydown',e=>keys[e.key]=true);
-window.addEventListener('keyup',e=>keys[e.key]=false);
+new THREE.CylinderGeometry(0.5,0.5,0.2,32),
 
-// Joystick
-let joystick=document.getElementById('joystick');
-let stick=document.getElementById('stick');
-let joy={x:0,y:0},dragging=false;
-function startDrag(e){ dragging=true; moveStick(e); e.preventDefault(); }
-function moveStick(e){
-  if(!dragging) return;
-  let touch=e.touches?e.touches[0]:e;
-  const rect=joystick.getBoundingClientRect();
-  let x=touch.clientX-rect.left-60,y=touch.clientY-rect.top-60;
-  let dist=Math.sqrt(x*x+y*y);
-  if(dist>30){x=x*30/dist;y=y*30/dist;}
-  stick.style.left=(30+x)+'px'; stick.style.top=(30+y)+'px';
-  joy.x = x/30;
-  joy.y = y/30; // y negatif = maju
-  e.preventDefault();
-}
-function endDrag(e){ dragging=false; joy.x=0; joy.y=0; stick.style.left='30px'; stick.style.top='30px'; e.preventDefault(); }
-joystick.addEventListener('pointerdown',startDrag);
-window.addEventListener('pointermove',moveStick);
-window.addEventListener('pointerup',endDrag);
-joystick.addEventListener('touchstart',startDrag);
-window.addEventListener('touchmove',moveStick);
-window.addEventListener('touchend',endDrag);
+new THREE.MeshLambertMaterial({color:0xffd700})
 
-// Draw
-function drawGround(camX, camY){
-    ctx.fillStyle = '#654321';
-    ctx.fillRect(0-camX, groundY-camY, mapWidth, mapHeight-groundY);
-}
-function drawTree(x, y, camX, camY){
-  ctx.fillStyle = '#8B4513';
-  ctx.fillRect(x - camX +15, y - camY +20, 10, 40);
-  ctx.fillStyle = '#228B22';
-  ctx.fillRect(x - camX, y - camY, 40, 40);
-}
-function drawCoin(x, y, camX, camY, type){
-  ctx.fillStyle = type=='giant'?'orange':'gold';
-  ctx.beginPath();
-  ctx.arc(x-camX+10, y-camY+10, type=='giant'?12:10, 0, Math.PI*2);
-  ctx.fill();
+);
+
+coin.rotation.x=Math.PI/2;
+
+coin.position.set(
+(Math.random()-0.5)*400,
+1,
+(Math.random()-0.5)*400
+);
+
+scene.add(coin);
+coins.push(coin);
+
 }
 
-// Update
+for(let i=0;i<60;i++) spawnCoin();
+
+// HEWAN
+function spawnAnimal(){
+
+const wolf=new THREE.Mesh(
+
+new THREE.BoxGeometry(1.5,1,3),
+
+new THREE.MeshLambertMaterial({color:0x555555})
+
+);
+
+wolf.position.set(
+(Math.random()-0.5)*400,
+0.5,
+(Math.random()-0.5)*400
+);
+
+scene.add(wolf);
+
+}
+
+for(let i=0;i<10;i++) spawnAnimal();
+
+// JOYSTICK
+let joy={x:0,y:0};
+
+const joystick=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+
+let dragging=false;
+
+joystick.addEventListener("pointerdown",()=>dragging=true);
+
+window.addEventListener("pointerup",()=>{
+
+dragging=false;
+joy.x=0;
+joy.y=0;
+stick.style.left="30px";
+stick.style.top="30px";
+
+});
+
+window.addEventListener("pointermove",e=>{
+
+if(!dragging) return;
+
+const rect=joystick.getBoundingClientRect();
+
+let x=e.clientX-rect.left-60;
+let y=e.clientY-rect.top-60;
+
+let dist=Math.sqrt(x*x+y*y);
+
+if(dist>30){
+
+x=x*30/dist;
+y=y*30/dist;
+
+}
+
+stick.style.left=(30+x)+"px";
+stick.style.top=(30+y)+"px";
+
+joy.x=x/30;
+joy.y=y/30;
+
+});
+
+// UPDATE
 function update(){
-  if(!player.alive) return;
-  if(player.energy<=0) return;
-  let speed=player.speed;
-  player.x += ((keys['d']||keys['ArrowRight']?1:0)-(keys['a']||keys['ArrowLeft']?1:0) + joy.x) * speed;
-  player.y += ((keys['s']||keys['ArrowDown']?1:0)-(keys['w']||keys['ArrowUp']?1:0) + joy.y) * speed;
 
-  player.x = Math.max(0, Math.min(mapWidth, player.x));
-  player.y = Math.max(0, Math.min(groundY-20, player.y));
+player.x += joy.x * player.speed;
+player.z += joy.y * player.speed;
 
-  // Ambil koin
-  coins.forEach((coin,index)=>{
-    if(Math.abs(player.x-coin.x)<25 && Math.abs(player.y-coin.y)<25){
-      if(coin.type=='normal' || (coin.type=='giant' && player.class=='Pemburu Koin Raksasa')){
-        let gain=coin.type=='giant'?5:1;
-        if(player.class=='Penjelajah' && coin.type=='normal') gain=2;
-        coinCount += gain;
-        document.getElementById('coinCount').textContent=coinCount;
-        coins.splice(index,1);
-        if(coin.type=='normal') spawnCoin(); else spawnGiantCoin();
-      }
-    }
-  });
+camera.position.x=player.x;
+camera.position.z=player.z+5;
 
-  // Ambil kayu
-  trees.forEach(tree=>{
-    if(Math.abs(player.x-tree.x)<25 && Math.abs(player.y-tree.y)<25 && tree.wood>0){
-      let gain=1;
-      if(player.class=='Penjaga Hutan') gain=2;
-      woodCount += gain;
-      tree.wood = Math.max(0, tree.wood - gain);
-      document.getElementById('woodCount').textContent=woodCount;
-    }
-  });
+camera.lookAt(player.x,0,player.z);
 
-  // Medis regenerasi energi
-  if(player.class=='Medis') player.energy = Math.min(100, player.energy + 0.2);
-  else if(Math.abs(joy.x)+Math.abs(joy.y)>0 || keys['w']||keys['a']||keys['s']||keys['d']) player.energy = Math.max(0, player.energy - 0.05);
-  document.getElementById('energy').textContent = Math.floor(player.energy);
+// ambil koin
+coins.forEach((coin,i)=>{
+
+let dx=coin.position.x-player.x;
+let dz=coin.position.z-player.z;
+
+if(Math.sqrt(dx*dx+dz*dz)<2){
+
+scene.remove(coin);
+coins.splice(i,1);
+
+let gain=1;
+
+if(player.class=="Penjelajah") gain=2;
+if(player.class=="Pemburu Koin Raksasa") gain=5;
+
+coinCount+=gain;
+
+document.getElementById("coin").textContent=coinCount;
+
+spawnCoin();
+
 }
 
-// Draw
-let ending=false;
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  let camX = player.x - canvas.width/2;
-  let camY = player.y - canvas.height/1.5;
+});
 
-  camX = Math.max(0, Math.min(camX, mapWidth - canvas.width));
-  camY = Math.max(0, Math.min(camY, mapHeight - canvas.height));
-
-  drawGround(camX, camY);
-  trees.forEach(tree=>drawTree(tree.x, tree.y, camX, camY));
-  coins.forEach(coin=>drawCoin(coin.x, coin.y, camX, camY, coin.type));
-
-  if(ending){
-    drawEnding(camX, camY);
-  }
 }
 
-// Game loop
-function gameLoop(){ update(); draw(); requestAnimationFrame(gameLoop); }
-gameLoop();
+// LOOP
+function animate(){
 
-// Class buttons
-document.getElementById('buyExplorer').addEventListener('click',()=>{ if(coinCount>=10){ coinCount-=10; player.class='Penjelajah'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Penjelajah'; alert('Kamu sekarang Penjelajah!'); }else alert('Koin tidak cukup!'); });
-document.getElementById('buyHunter').addEventListener('click',()=>{ if(coinCount>=20){ coinCount-=20; player.class='Pemburu Koin Raksasa'; player.speed=4; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Pemburu Koin Raksasa'; alert('Kamu sekarang Pemburu Koin Raksasa!'); }else alert('Koin tidak cukup!'); });
-document.getElementById('buyGuard').addEventListener('click',()=>{ if(coinCount>=15){ coinCount-=15; player.class='Penjaga Hutan'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Penjaga Hutan'; alert('Kamu sekarang Penjaga Hutan!'); }else alert('Koin tidak cukup!'); });
-document.getElementById('buyMedic').addEventListener('click',()=>{ if(coinCount>=15){ coinCount-=15; player.class='Medis'; player.speed=3; document.getElementById('coinCount').textContent=coinCount; document.getElementById('playerClass').textContent='Class: Medis'; alert('Kamu sekarang Medis!'); }else alert('Koin tidak cukup!'); });
+requestAnimationFrame(animate);
 
-// Crafting
-document.getElementById('craftWood').addEventListener('click',()=>{ if(woodCount>=5){ woodCount-=5; alert('Kamu berhasil membuat papan kayu!'); woodCount-=5; document.getElementById('woodCount').textContent=woodCount; }else alert('Kayu tidak cukup!'); });
+update();
 
-// Ending cinematic
-function triggerEnding(){
-  ending=true;
-  player.alive=false;
-  alert('Selamat! Kamu berhasil bertahan hingga Hari 99!\nEnding cinematic dimulai...');
-  let owlY=-50, bombY=-50, helipadX=player.x-50;
-  let frame=0;
-  function endingAnim(){
-    frame++;
-    draw();
-    let camX = player.x - canvas.width/2;
-    let camY = player.y - canvas.height/2;
-    camX = Math.max(0, Math.min(camX, mapWidth - canvas.width));
-    camY = Math.max(0, Math.min(camY, mapHeight - canvas.height));
-    ctx.fillStyle='gray';
-    ctx.fillRect(helipadX-camX,player.y-100-camY,100,40);
-    owlY+=2;
-    ctx.fillStyle='white';
-    ctx.beginPath();
-    ctx.arc(player.x-camX,owlY-camY,20,0,Math.PI*2);
-    ctx.fill();
-    bombY+=3;
-    ctx.fillStyle='red';
-    ctx.beginPath();
-    ctx.arc(player.x-camX,bombY-camY,10,0,Math.PI*2);
-    ctx.fill();
-    if(Math.abs(bombY-owlY)<5){
-      ctx.fillStyle='orange';
-      ctx.beginPath();
-      ctx.arc(player.x-camX,owlY-camY,30,0,Math.PI*2);
-      ctx.fill();
-      return;
-    }
-    if(frame<300) requestAnimationFrame(endingAnim);
-  }
-  endingAnim();
+renderer.render(scene,camera);
+
 }
+
+animate();
+
+// CLASS
+function buyExplorer(){
+
+if(coinCount>=10){
+
+coinCount-=10;
+
+player.class="Penjelajah";
+
+player.speed=0.18;
+
+document.getElementById("class").textContent="Penjelajah";
+
+}
+
+}
+
+function buyHunter(){
+
+if(coinCount>=20){
+
+coinCount-=20;
+
+player.class="Pemburu Koin Raksasa";
+
+player.speed=0.22;
+
+document.getElementById("class").textContent="Pemburu Koin Raksasa";
+
+}
+
+}
+
+function buyGuard(){
+
+if(coinCount>=15){
+
+coinCount-=15;
+
+player.class="Penjaga Hutan";
+
+document.getElementById("class").textContent="Penjaga Hutan";
+
+}
+
+}
+
+function buyMedic(){
+
+if(coinCount>=15){
+
+coinCount-=15;
+
+player.class="Medis";
+
+document.getElementById("class").textContent="Medis";
+
+}
+
+}
+
+// HARI
+let day=1;
+
+setInterval(()=>{
+
+day++;
+
+document.getElementById("day").textContent=day;
+
+if(day==99){
+
+alert("Helikopter datang! Kamu selamat dari hutan!");
+
+}
+
+},10000);
+
 </script>
+
 </body>
 </html>
